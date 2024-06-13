@@ -1,37 +1,44 @@
-'use client';
-// pages/index.js
-import { useEffect } from 'react';
-import io from 'socket.io-client';
+"use client";
 
-let socket:any;
+import { useEffect, useState } from "react";
+import { socket } from "./socket";
 
-const Home = () => {
+export default function Home() {
+  const [isConnected, setIsConnected] = useState(false);
+  const [transport, setTransport] = useState("N/A");
+
   useEffect(() => {
-    // Connect to the server
-    socket = io();
+    if (socket.connected) {
+      onConnect();
+    }
 
-    // Listen for events
-    socket.on('connect', () => {
-      console.log('Connected to WebSocket server');
-    });
+    function onConnect() {
+      setIsConnected(true);
+      setTransport(socket.io.engine.transport.name);
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
-    });
+      socket.io.engine.on("upgrade", (transport) => {
+        setTransport(transport.name);
+      });
+    }
 
-    // Clean up the connection on unmount
+    function onDisconnect() {
+      setIsConnected(false);
+      setTransport("N/A");
+    }
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.close();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
     };
   }, []);
 
   return (
     <div>
-      <h1>WebSocket with Next.js</h1>
+      <p>Status: { isConnected ? "connected" : "disconnected" }</p>
+      <p>Transport: { transport }</p>
     </div>
   );
-};
-
-export default Home;
+}
